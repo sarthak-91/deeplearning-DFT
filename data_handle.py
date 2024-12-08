@@ -65,7 +65,7 @@ class Dataset:
     """
 
     def __init__(self, input_file="new_input.txt", output_file="new_output.txt", 
-                 folder="data_model", test_size=0.3):
+                 folder="data_model", test_size=0.3,replit=False):
         """
         Initialize the Dataset with input and output files.
 
@@ -91,9 +91,10 @@ class Dataset:
         self.x_test,self.y_labeled_test = None, None
         
         # Perform initial dataset split
-        self.split_dataset(test_size=test_size)
+        if not os.path.exists(f"{self.folder}/{self.x_train_file}"): self.split_dataset(test_size=test_size)
+        else:self.load_dataset()
     
-    def split_dataset(self, test_size=0.3, save_to_file:bool=True):
+    def split_dataset(self, test_size=0.3, save_to_file:bool=True, resplit=False):
         """
         Split the dataset into training and testing sets.
 
@@ -119,7 +120,7 @@ class Dataset:
             np.savetxt(f"{self.folder}/{self.y_train_file}", self.y_labeled_train)
             np.savetxt(f"{self.folder}/{self.y_test_file}", self.y_labeled_test)
 
-    def load_dataset(self, bonds_info=False):
+    def load_dataset(self):
         """
         Load previously split dataset from files.
 
@@ -138,7 +139,6 @@ class Dataset:
         self.x_test = load_to_3d(f"{self.folder}/{self.x_test_file}")
         self.y_labeled_train = np.loadtxt(f"{self.folder}/{self.y_train_file}")
         self.y_labeled_test = np.loadtxt(f"{self.folder}/{self.y_test_file}")
-        self.data_list = self.x_train, self.x_test 
 
     def build_histogram(self, energy:bool=True, atomic_mass:bool=False, no_of_atoms:bool=False):
         """
@@ -160,16 +160,59 @@ class Dataset:
         test_ids = self.y_labeled_test[:, 0]
 
         if energy:
-            # Energy histogram generation code remains the same
-            pass
-
+            energies = y_labeled_train[:,1]
+            test_energies = y_labeled_test[:,1]
+            fig,ax = subplots(2)
+            ax[0].hist(energies,bins = 20)
+            ax[0].set_title("Training set")
+            ax[1].hist(test_energies,bins = 20)
+            ax[1].set_title("Test set")
+            ax[0].set_ylabel("Count")
+            ax[1].set_ylabel("Count")
+            ax[1].set_xlabel("Energy (Hatrees)")
+            subplots_adjust(hspace=0.4)
+            fig.savefig(f"{folder}/energy_histograms.png")
+        
         if atomic_mass:
-            # Atomic mass histogram generation code remains the same
-            pass
-
+            train_masses = []
+            for id in ids:
+                mol= Molecule('',f'data_extract/tested_input/input/{int(id)}.gjf')
+                train_masses.append(mol.mass)
+            test_masses = []
+            for test_id in test_ids:
+                mol= Molecule('',f'data_extract/tested_input/input/{int(test_id)}.gjf')
+                test_masses.append(mol.mass)            
+            fig,ax = subplots(2)
+            ax[0].hist(train_masses,bins = 20)
+            ax[0].set_title("Training set")
+            ax[1].hist(test_masses,bins = 20)
+            ax[1].set_title("Test set")
+            ax[0].set_ylabel("Count")
+            ax[1].set_ylabel("Count")
+            ax[1].set_xlabel("Atomic mass (amu)")
+            subplots_adjust(hspace=0.4)
+            fig.savefig(f"{folder}/mass_histograms.png")
         if no_of_atoms:
-            # Number of atoms histogram generation code remains the same
-            pass
+            train_no = []
+            for id_ in ids:
+                mol= Molecule('',f'data_extract/tested_input/input/{int(id_)}.gjf')
+                train_no.append(len(mol.atoms))
+            test_no = []
+            for test_id in test_ids:
+                mol= Molecule('',f'data_extract/tested_input/input/{int(test_id)}.gjf')
+                test_no.append(len(mol.atoms))   
+            train_no =  train_no.sorted()      
+            test_no = test_no.sorted()
+            fig,ax = subplots(2)
+            ax[0].hist(train_no)
+            ax[0].set_title("Training set")
+            ax[1].hist(test_no)
+            ax[1].set_title("Test set")
+            ax[0].set_ylabel("Count")
+            ax[1].set_ylabel("Count")
+            ax[1].set_xlabel("No of Atoms")
+            subplots_adjust(hspace=0.4)
+            fig.savefig(f"{folder}/number_histograms.png")
 
     def get_time(self, set='test', elapsed=True):
         """
