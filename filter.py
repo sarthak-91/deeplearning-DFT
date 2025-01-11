@@ -54,13 +54,14 @@ def count_from_dataset(data_path:os.PathLike,store_to:os.PathLike=None):
     df = pd.read_csv(data_path,low_memory=False)
     print("loaded")
     print(df.columns)
-    df.dropna(subset=["Molecular Formula"],inplace=True)
+    df.dropna(subset=["Molecular Formula","Smiles"],inplace=True)
     print("Removed nans")
     df['Atom Count'] = df['Molecular Formula'].apply(count)
+    df.dropna(subset=["Atom Count"],inplace=True)
     print("Counted Atoms")
     valid_df = df[df['Atom Count'] > 0]
     print("Filtered")
-    if store_to: valid_df.to_csv(store_to)
+    if store_to: valid_df.to_csv(store_to,index=False)
     return valid_df
 
 def histogram(dataset:pd.DataFrame,column:str,save_to:os.PathLike,filename:str=""):
@@ -82,7 +83,7 @@ if __name__ == "__main__":
     current_path = os.getcwd()
     data_path = os.path.join(current_path,"data/molecule_info.csv")
     store_path = os.path.join(current_path,"data/valid_molecules.csv")
-    
+
     mol_valid_formulas = count_from_dataset(data_path,store_to=store_path)
     print("counted number of atoms")
     if not os.path.exists("visualizations"):os.makedirs("visualizations")
@@ -93,5 +94,9 @@ if __name__ == "__main__":
     
     second_filter_dataset = filter_by_column(dataset=first_filter_dataset,column="Atom Count",filters=[20,80])
     histogram(dataset=second_filter_dataset,column="Atom Count",save_to="visualizations",filename="20_80_")
-
-    second_filter_dataset.to_csv(os.path.join(current_path,"data/filtered_molecules.csv"))
+    
+    sampled_down_dataset = second_filter_dataset.sample(n=10000)
+    print("Sampled")
+    histogram(dataset=sampled_down_dataset,column="Atom Count",save_to="visualizations",filename="sampled_down_")
+    print("Saving")
+    sampled_down_dataset.to_csv(os.path.join(current_path,"data/filtered_molecules.csv"),index=False)

@@ -182,7 +182,6 @@ class NeuralNetworkManager:
             raise AttributeError("Model must be trained and compiled before prediction.")
 
         x_test, y_test = self.data.x_test, self.data.y_labeled_test[:, 1]
-        x_test = flatten_array(x_test)
         
         predictions = self.model.predict(x_test).reshape(-1)
         mse = ((y_test - predictions) ** 2).mean()
