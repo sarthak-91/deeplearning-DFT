@@ -4,7 +4,7 @@ import pubchempy as pcp
 from threading import Thread
 import numpy as np
 
-def write_to_gjf(compound:pcp.Compound,threads="6",method="b3lyp",basis="6-31g"):
+def write_to_gjf(compound:pcp.Compound,threads="7",method="hf",basis="sto-3g"):
     parent_path=os.getcwd()
     gauss_files_path=os.path.join(parent_path,"gaussian")
     os.makedirs(gauss_files_path, exist_ok=True)
@@ -57,7 +57,7 @@ def get_compound(list_of_smiles:pd.Series,split_index:int,dictionary):
             if compound_list==[]:continue
             compound=compound_list[0]
             write_to_gjf(compound=compound)
-            dictionary[value]=compound.cid
+            dictionary[value]=int(compound.cid)
         except Exception as error:
             print(i,value,error)
         i+=1
@@ -80,7 +80,7 @@ def main():
     current_path = os.getcwd()
     data_path = os.path.join(current_path,"data/filtered_molecules.csv")
     molecules=pd.read_csv(data_path)
-    threads=3
+    threads=4
     run_thread(molecules,data_path=data_path,n_threads=threads)
     return 0
 

@@ -3,18 +3,18 @@ import json
 from numpy.linalg import norm
 
 with open('elements.json', 'r') as file:
-    element_dict = json.load(file)
-def sort_by_norm(coulomb_matrix: np.ndarray):
-    """
-    Sort rows of the Coulomb matrix by their vector norms in descending order.
+    elements= json.load(file)
 
-    Args:
-        coulomb_matrix (np.ndarray): The Coulomb matrix to be sorted.
 
-    Returns:
-        np.ndarray: The sorted Coulomb matrix.
-    """
-    return np.array(sorted(coulomb_matrix, key=lambda x: norm(x), reverse=True))
+def upper_triangular_to_vector(symmetric_array):
+
+    if not isinstance(symmetric_array, np.ndarray):
+        raise ValueError("Input must be a NumPy array.")
+    
+    if symmetric_array.ndim != 2 or symmetric_array.shape[0] != symmetric_array.shape[1]:
+        raise ValueError("Input must be a square matrix.")
+    
+    return symmetric_array[np.triu_indices_from(symmetric_array)]
 
 
 class Molecule:
@@ -31,67 +31,92 @@ class Molecule:
         coulomb_matrix (np.ndarray): Coulomb matrix representing molecular interactions.
         bond_matrix (np.ndarray): Matrix representing the bond connections between atoms.
     """
-    def __init__(self, name, gjf_file: str = '', distance_sorting=1, norm_sorting=0):
+    def __init__(self, gjf_file: str,name:str='', distance_sorting=1):
         """
         Initializes the molecule with optional geometry from a Gaussian input file.
 
         Args:
             name (str): Name of the molecule.
-            gjf_file (str): Path to the Gaussian input (.gjf) file. Default is an empty string.
+            gjf_file (str): Path to the Gaussian input (.gjf) file.
             distance_sorting (int): Whether to sort atoms by distance to the center of mass. Default is 1.
-            norm_sorting (int): Whether to sort the Coulomb matrix by row norms. Default is 0.
         """
         self.name = name
         self.atoms = []
-        self.atom_count = 0
+        self.bonds = []
         self.mass = 0
         self.gjf_file = gjf_file
 
         # Load molecule geometry if gjf file is provided
-        if gjf_file:
-            self.read_from_gjf(gjf_file)
-
+        
+        self.read_from_gjf(elements,gjf_file)
         self.center = self.calculate_center_of_mass()
         self.update_distances_from_center()
-        self.calculate_spherical_coordinates()
+        self.atom_count=len(self.atoms)
 
         # Generate Coulomb matrix and sort if necessary
         if distance_sorting:
             self.sort_by_distance()
-            self.coulomb_matrix = self.calculate_coulomb_matrix()
-        elif norm_sorting:
-            self.coulomb_matrix = self.calculate_coulomb_matrix(sort_by_norm=True)
-        else:
-            self.coulomb_matrix = self.calculate_coulomb_matrix()
+        self.coulomb_matrix = self.calculate_coulomb_matrix()
 
-        # Parse bond matrix if file provided
-        self.bond_matrix = self.extract_bonds()
+    def create_atom(self,elements, line, atom_id):
+        split_line = line.split()
+        symbol = split_line[0]
+        position = np.array(list(map(float, split_line[1:4])))
+        return Atom(symbol, atom_id, position, elements)
 
-    def read_from_gjf(self, gjf_file: str):
+    def create_bond(self, line):
+     """
+     Parses a line to create bonds and adds them to the bond list.
+
+     Parameters:
+     - bond_list (list): List to store Bond instances.
+     - line (str): Line containing bond data.
+     """
+     split_line = line.split()
+     atom_id1 = int(split_line[0])
+     for i in range(1, len(split_line), 2):
+         atom_id2 = int(split_line[i])
+         order = float(split_line[i + 1])
+         bond = Bond(atom_id1, atom_id2, order)
+         self.bonds.append(bond)
+
+
+    def read_from_gjf(self,elements, gjf_file):
         """
-        Reads atomic data (symbols and coordinates) from a Gaussian input file.
+        Reads a Gaussian input file (.gjf) and populates atom_list and bond_list.
 
-        Args:
-            gjf_file (str): Path to the Gaussian input file.
+        Parameters:
+        - atom_list (list): List to store Atom objects.
+        - bond_list (list): List to store Bond objects.
+        - elements (dict): Dictionary with element symbols as keys and [number, mass] as values.
+        - gjf_file (str): Path to the Gaussian input file.
         """
-        with open(gjf_file, encoding="utf8", errors="ignore") as file:
-            lines = file.readlines()
+        try:
+            with open(gjf_file, 'r') as file:
+                filled_line = 0
+                atoms_encountered = False
+                bonds_encountered = False
+                atom_id = 0
 
-        # Parse atomic symbols and coordinates
-        self.atoms = [
-            Atom(line.split()[0])
-            for line in lines[7:]
-            if len(line.split()) == 4 and not line.split()[0].isnumeric()
-        ]
-        self.atom_count = len(self.atoms)
+                for line in file:
+                    line = line.strip()
+                    if not line:
+                        if atoms_encountered:
+                            bonds_encountered = True
+                            atoms_encountered = False
+                    elif filled_line >= 5:
+                        atoms_encountered = not bonds_encountered
+                        if atoms_encountered:
+                            atom_id += 1
+                            self.atoms.append(self.create_atom(elements, line, atom_id))
+                        elif bonds_encountered:
+                            if len(line.split()) != 1:
+                                self.create_bond(line)
+                    if line:
+                        filled_line += 1
+        except FileNotFoundError:
+            print(f"Could not open file {gjf_file}")
 
-        coordinates = np.array([
-            [float(coord) for coord in line.split()[1:]]
-            for line in lines[7:7 + self.atom_count]
-        ])
-        for atom, coord in zip(self.atoms, coordinates):
-            atom.position = coord
-        self.coordinates = coordinates
 
     def calculate_center_of_mass(self):
         """
@@ -112,28 +137,17 @@ class Molecule:
         for atom in self.atoms:
             atom.distance_to_center = np.linalg.norm(atom.position - self.center)
 
-    def calculate_spherical_coordinates(self):
-        """
-        Calculates the spherical coordinates of each atom relative to the center of mass.
-        """
-        for atom in self.atoms:
-            relative_position = atom.position - self.center
-            r = np.linalg.norm(relative_position)
-            theta = np.arctan2(relative_position[1], relative_position[0])
-            phi = np.arccos(relative_position[2] / r if r != 0 else 0)
-            atom.theta_to_center = theta
-            atom.phi_to_center = phi
 
     def sort_by_distance(self):
         """
         Sorts atoms by atomic number and distance from the center of mass.
         """
         self.atoms.sort(
-            key=lambda atom: (atom.atomic_number, atom.distance_to_center)
+            key=lambda atom: (-atom.number, atom.distance_to_center)
         )
         self.coordinates = np.array([atom.position for atom in self.atoms])
 
-    def calculate_coulomb_matrix(self, sort_by_norm=False):
+    def calculate_coulomb_matrix(self):
         """
         Calculates the Coulomb matrix for the molecule.
 
@@ -144,45 +158,20 @@ class Molecule:
             np.ndarray: The Coulomb matrix.
         """
         positions = np.array([atom.position for atom in self.atoms])
-        atomic_numbers = np.array([atom.atomic_number for atom in self.atoms])
+        numbers = np.array([atom.number for atom in self.atoms])
         c_matrix = np.zeros((self.atom_count, self.atom_count))
 
         for i in range(self.atom_count):
             for j in range(self.atom_count):
                 if i == j:
-                    c_matrix[i, j] = 0.5 * atomic_numbers[i] ** 2.4
+                    c_matrix[i, j] = 0.5 * numbers[i] ** 2.4
                 else:
                     distance = np.linalg.norm(positions[i] - positions[j])
-                    c_matrix[i, j] = atomic_numbers[i] * atomic_numbers[j] / distance
+                    c_matrix[i, j] = numbers[i] * numbers[j] / distance
 
-        return sort_by_norm(c_matrix) if sort_by_norm else c_matrix
+        return upper_triangular_to_vector(c_matrix)
 
-    def extract_bonds(self):
-        """
-        Extracts bond connectivity from the Gaussian input file.
 
-        Returns:
-            np.ndarray: The bond matrix.
-        """
-        bond_matrix = np.zeros((self.atom_count, self.atom_count))
-        with open(self.gjf_file, 'r') as file:
-            lines = file.readlines()[7 + self.atom_count:]
-        for line in lines:
-            data = line.split()
-            print(data)
-            if data == [] or len(data) == 1:
-                continue
-            elif len(data) == 3:
-                i, j, bond = map(float, data)
-                bond_matrix[int(i) - 1, int(j) - 1] = bond
-                bond_matrix[int(j) - 1, int(i) - 1] = bond
-            else:
-                i = int(data[0]) - 1
-                for k in range(1, len(data), 2):
-                    j, bond = int(data[k]) - 1, float(data[k + 1])
-                    bond_matrix[i, j] = bond
-                    bond_matrix[j, i] = bond
-        return bond_matrix
 
     def __str__(self):
         """
@@ -192,39 +181,53 @@ class Molecule:
         print(f"Number of atoms: {self.atom_count}")
         for idx, atom in enumerate(self.atoms):
             print(f"{idx}: {atom}")
+        for  ifx,bond in enumerate(self.bonds):
+            print(f"{idx}: {bond}")
         return ""
 
 
 class Atom:
     """
-    Represents an atom in the molecule.
-
-    Attributes:
-        symbol (str): Chemical symbol of the atom.
-        atomic_number (int): Atomic number of the atom.
-        mass (float): Atomic mass of the atom.
-        position (np.ndarray): Cartesian coordinates of the atom.
-        distance_to_center (float): Distance of the atom from the center of mass.
-        theta_to_center (float): Theta angle (spherical coordinates).
-        phi_to_center (float): Phi angle (spherical coordinates).
+    Represents an atom with an element, ID, and position.
     """
-    def __init__(self, symbol: str):
+    def __init__(self, symbol, atom_id, position, elements):
         """
-        Initializes an atom with its symbol and default properties.
+        Initialize an Atom instance.
 
-        Args:
-            symbol (str): Chemical symbol of the atom.
+        Parameters:
+        - symbol (str): Element symbol (e.g., "H", "O").
+        - atom_id (int): Atom ID.
+        - position (list of float): Position of the atom [x, y, z].
+        - elements (dict): Dictionary with element symbols as keys and [number, mass] as values.
         """
+        if symbol not in elements:
+            raise ValueError(f"Element symbol '{symbol}' not found in elements dictionary.")
+        
         self.symbol = symbol
-        self.atomic_number = element_dict[symbol][0]
-        self.mass = element_dict[symbol][1]
-        self.position = np.zeros(3)
-        self.distance_to_center = 0
-        self.theta_to_center = 0
-        self.phi_to_center = 0
+        self.number = float(elements[symbol]['N'])
+        self.mass = float(elements[symbol]['M'])
+        self.atom_id = atom_id
+        self.position = position  
 
-    def __str__(self):
+    def __repr__(self):
+        return f"Atom(symbol={self.symbol}, id={self.atom_id}, position={self.position})"
+
+class Bond:
+    """
+    Represents a bond between two atoms.
+    """
+    def __init__(self, atom_id1, atom_id2, order):
         """
-        Returns a string representation of the atom.
+        Initialize a Bond instance.
+
+        Parameters:
+        - atom_id1 (int): ID of the first atom.
+        - atom_id2 (int): ID of the second atom.
+        - order (float): Bond order.
         """
-        return f"{self.symbol} - Position: {self.position}, Distance to Center: {self.distance_to_center:.3f}"
+        self.atom_id1 = atom_id1
+        self.atom_id2 = atom_id2
+        self.order = order
+
+    def __repr__(self):
+        return f"Bond(atom_id1={self.atom_id1}, atom_id2={self.atom_id2}, order={self.order})"
