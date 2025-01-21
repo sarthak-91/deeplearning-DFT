@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from visuals import histogram 
 def count(formula):
     # Add "X" to the end of the formula
     new_formula = formula + "X"
@@ -64,14 +65,6 @@ def count_from_dataset(data_path:os.PathLike,store_to:os.PathLike=None):
     if store_to: valid_df.to_csv(store_to,index=False)
     return valid_df
 
-def histogram(dataset:pd.DataFrame,column:str,save_to:os.PathLike,filename:str=""):
-    plt.figure(figsize=(8, 6))
-    dataset[column].hist(bins=10, color='skyblue', edgecolor='black')
-    plt.title('Histogram of {}'.format(column), fontsize=14)
-    plt.xlabel(column, fontsize=12)
-    plt.ylabel('Frequency', fontsize=12)
-    plt.grid(False)
-    plt.savefig(os.path.join(save_to,filename+column+".png"))
 
 def filter_by_column(dataset:pd.DataFrame,column:str,filters:list):
     if len(filters)>2:return 
