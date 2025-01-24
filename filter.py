@@ -143,7 +143,7 @@ if __name__ == "__main__":
     second_filter_dataset = filter_by_column(dataset=first_filter_dataset,column="Atom Count",filters=[20,80])
     histogram(dataset=second_filter_dataset,column="Atom Count",save_to="visualizations",filename="20_80_")
     
-    sampled_down_dataset = second_filter_dataset.sample(n=10000)
+    sampled_down_dataset = second_filter_dataset.sample(n=10000,random_state=40)
     print("Sampled")
     histogram(dataset=sampled_down_dataset,column="Atom Count",save_to="visualizations",filename="sampled_down_")
     print("Saving")
