@@ -169,7 +169,7 @@ class Molecule:
                     distance = np.linalg.norm(positions[i] - positions[j])
                     c_matrix[i, j] = numbers[i] * numbers[j] / distance
 
-        return upper_triangular_to_vector(c_matrix)
+        return c_matrix
 
 
 
