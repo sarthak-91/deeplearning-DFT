@@ -36,6 +36,29 @@ def training_performance(history,save_to:str):
     plt.savefig(save_to)
     plt.close()
 
+def error_hist(y_test,predictions,save_to:str):
+    error = np.abs(y_test-predictions)
+    def squish(x, c=1):
+        return  np.log(1+c*x)/np.log(1+c)
+
+    # Create histogram
+    bins = np.arange(0, max(error)+10, 10)  # Bin width of 10
+    print(max(error))
+    print(len(error))
+    hist, bin_edges = np.histogram(error, bins=bins)
+
+    # Apply squishing function to histogram counts
+    squished_counts = squish(hist)
+
+    # Plot
+    plt.bar(bin_edges[:-1], squished_counts, width=10, edgecolor='black', alpha=0.7)
+    plt.xlabel('Error Values')
+    plt.ylabel('Transformed Frequency')
+    plt.title('Histogram with Log-like Squished Counts')
+    plt.savefig(save_to)
+    plt.close()
+    
+
 def error_vs_atoms(x_test, y_test, predictions,save_to:str):
     error = np.abs(y_test-predictions)
     N_atoms = np.zeros(error.shape)
@@ -55,10 +78,10 @@ def error_vs_atoms(x_test, y_test, predictions,save_to:str):
 
 
 if __name__ == "__main__":
-    network = NeuralNetworkManager(folder="cnn_model",model_name="kernel_9")
-    network.load_model(model_name="kernel_6",epochs=200)
+    network = NeuralNetworkManager(folder="cnn_model",model_name="parameter")
+    network.load_model(model_name="parameter",epochs=300)
     dataset = Dataset()
     x_test,y_test = dataset.load_data(dataset="testing")
     x_test_new = np.expand_dims(x_test,axis=-1)
     predictions, mse = network.predict(x_test_new,y_test)
-    error_vs_atoms(x_test=x_test,y_test=y_test,predictions=predictions,save_to="error.png")
+    error_hist(y_test, predictions,save_to="cnn_model/parameter/error_hist.png")
