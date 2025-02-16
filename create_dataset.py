@@ -41,8 +41,7 @@ def fill_up(big_array:np.ndarray,coulomb_vector:np.ndarray, index:int=0):
         big_array[:M] =coulomb_vector
     else: 
         big_array[index][:M] = coulomb_vector
-
-def create_npz(molecules:pd.DataFrame, dataset_path:str, max_N):
+def create_npz(molecules:pd.DataFrame, npz_path:str, dataset_path:str, max_N):
     N = int(max_N*(max_N+1)/2)
     big_array = np.zeros((molecules.shape[0],N))
     energies=molecules['Energy'].to_numpy()
@@ -57,25 +56,62 @@ def create_npz(molecules:pd.DataFrame, dataset_path:str, max_N):
         del c_matrix,mol
         i+=1
         if (i % 500 == 0):print(f"{i} done")
+    molecules.to_csv(dataset_path,index=False)
     del molecules
-    np.savez(dataset_path,input=big_array,output=energies)
+    np.savez(npz_path,input=big_array,output=energies)
 
 
-def complete_set(molecules:pd.DataFrame,dataset_path:str,split:bool=False,
-                 training_set_path="training_set.npz",testing_set_path="testing_set.npz",
-                 test_size:float=0.3, random_state:int =40):
-    
+
+def create_train_test(molecules:pd.DataFrame,
+                npz_folder='datasets',dataset_folder='datasets',
+                test_size:float=0.3, random_state:int =40):
     
     molecules.dropna(inplace=True)
     max_atoms = molecules['Atom Count'].sort_values(ignore_index=True,ascending=False)[0]
+    train_set, test_set = train_test_split(molecules, test_size=test_size,shuffle=True, random_state=random_state)
+    print("Split into training and testing")
+    print("Creating training set")
+    create_npz(molecules=train_set,npz_path=f'{npz_folder}/training_set.npz',dataset_path=f'{dataset_folder}/training_set.csv',max_N=max_atoms)
+    print("Creating testing set")
+
+def create_npz(molecules:pd.DataFrame, npz_path:str, dataset_path:str, max_N):
+    N = int(max_N*(max_N+1)/2)
+    big_array = np.zeros((molecules.shape[0],N))
     energies=molecules['Energy'].to_numpy()
-    #Length of Coulomb vector = N(N+1)/2
-    X_train,X_test,y_train,y_test = train_test_split(molecules,energies,test_size=test_size,shuffle=True, random_state=random_state)
+    i = 0
+    for compound in molecules['Pubchem_id']:
+        file = str(compound) + '.gjf'
+        path = os.path.join('gaussian/input',file)
+        #Create Molecule object and calculate coulomb matrix. 
+        mol = Molecule(name='test', gjf_file=path)
+        c_matrix = mol.coulomb_matrix
+        fill_up(big_array,coulomb_vector=c_matrix,index=i)
+        del c_matrix,mol
+        i+=1
+        if (i % 500 == 0):print(f"{i} done")
+    molecules.to_csv(dataset_path,index=False)
+    del molecules
+    np.savez(npz_path,input=big_array,output=energies)
+
+
+
+def create_train_test(molecules:pd.DataFrame,
+                npz_folder='datasets',dataset_folder='datasets',
+                test_size:float=0.3, random_state:int =40):
     
+    molecules.dropna(inplace=True)
+    max_atoms = molecules['Atom Count'].sort_values(ignore_index=True,ascending=False)[0]
+    train_set, test_set = train_test_split(molecules, test_size=test_size,shuffle=True, random_state=random_state)
+    print("Split into training and testing")
+    print("Creating training set")
+    create_npz(molecules=train_set,npz_path=f'{npz_folder}/training_set.npz',dataset_path=f'{dataset_folder}/training_set.csv',max_N=max_atoms)
+    print("Creating testing set")
+    create_npz(molecules=test_set,npz_path=f'{npz_folder}/testing_set.npz',dataset_path=f'{dataset_folder}/testing_set.csv',max_N=max_atoms)
 
 def main():
     molecules=pd.read_csv('data/filtered_molecules.csv')
-    complete_set(molecules=molecules,dataset_path="complete_dataset.npz",split=True)
+    os.makedirs('datasets',exist_ok=True)
+    create_train_test(molecules=molecules)
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,11 @@
 import numpy as np
 import os
 from sklearn.model_selection import train_test_split
+import pandas as pd 
+from create_dataset import create_train_test
 
 
-def load_npz(npz_file:str,names:list) -> list:
+def load_npz(npz_file:str,names:list) -> dict:
     """Loads specified arrays from a `.npz` file and returns them as a dict of NumPy arrays.
 
     Args:
@@ -16,11 +18,16 @@ def load_npz(npz_file:str,names:list) -> list:
     Raises:
         KeyError: If a specified name is not found in the `.npz` file.
     """
+
     array = np.load(npz_file)
-    dict_of_arrays={}
-    for name in names:dict_of_arrays[name] = array[name]
+    dict_of_arrays = {}
+    for name in names:
+        if name not in array:
+            raise KeyError(f"Key '{name}' not found in {npz_file}")
+        dict_of_arrays[name] = array[name]
     array.close()
     return dict_of_arrays
+
 
 class Dataset:
     """
@@ -39,8 +46,9 @@ class Dataset:
         y_labeled_test (numpy.ndarray): Testing labels.
     """
 
-    def __init__(self, complete_dataset:str="complete_dataset.npz", training_set:str="training_set.npz", 
-                 testing_set:str="testing_set.npz", test_size:float=0.3,resplit:bool=False, random_state:int=40):
+    def __init__(self, complete_dataset:str="data/filtered_molecules.csv", 
+                 npz_folder:str='datasets',csv_folder:str='datasets',
+                 test_size:float=0.3,resplit:bool=False, random_state:int=40):
         """
         Initialize the Dataset with input and output files.
 
@@ -52,46 +60,83 @@ class Dataset:
                                          Defaults to 0.3.
         """
         self.dataset_path = complete_dataset
-        self.training_set_path = training_set
-        self.testing_set_path= testing_set
+        self.npz_folder=npz_folder
+        self.csv_folder = csv_folder
+        self.training_set_csv = os.path.join(csv_folder,'training_set.csv')
+        self.testing_set_csv= os.path.join(csv_folder,'testing_set.csv')
+        self.training_set_npz =  os.path.join(npz_folder,'training_set.npz')
+        self.testing_set_npz = os.path.join(npz_folder,'testing_set.npz')
         self.test_size = test_size
         self.random_state=random_state
         
         if not os.path.exists(complete_dataset):
-            raise FileExistsError("Complete dataset not found, Run complete_set() from create_dataset module")
+            raise FileNotFoundError("Complete dataset not found.")
         
-        if resplit==True or not (os.path.exists(training_set) and os.path.exists(testing_set)):
-            self.split_dataset(test_size=test_size)
+        if not (os.path.exists(self.training_set_npz) and os.path.exists(self.testing_set_npz)):
+            self.split_dataset()
+        elif resplit == True:  
+            self.resplit_dataset()
 
+    def split_dataset(self,**kwargs):
+        if kwargs != {}:
+            if 'test_size' in kwargs.keys():
+                self.test_size = kwargs['test_size']
+            if 'random_state' in kwargs.keys():
+                self.random_state = kwargs['random_state']
+        molecules=pd.read_csv(self.dataset_path)
+        create_train_test(molecules=molecules,npz_folder=self.npz_folder,dataset_folder=self.csv_folder,
+                          test_size=self.test_size,random_state=self.random_state)
     
-    def split_dataset(self,return_arrays=False):
-        """ Splits the dataset into training and testing sets and saves them as `.npz` files.
-
-        Args:
-            return_arrays (bool, optional): If True, returns the split arrays (X_train, X_test, y_train, y_test).
-                                           Defaults to False.
-
-        Returns:
-            Optional[tuple]: If `return_arrays` is True, returns a tuple of (X_train, X_test, y_train, y_test).
-                            Otherwise, returns None.
-
-        """
-        print("Splitting dataset")
-        # Load the complete dataset
-        complete_set = load_npz(self.dataset_path,['input','output'])
-        X = complete_set['input']
-        Y = complete_set['output']
-
-        # Split the dataset into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, Y, test_size=self.test_size, shuffle=True, random_state=self.random_state
+    
+    def resplit_dataset(self,**kwargs):
+        # Load CSV files
+        if kwargs != {}:
+            if 'test_size' in kwargs.keys():
+                self.test_size = kwargs['test_size']
+            if 'random_state' in kwargs.keys():
+                self.random_state = kwargs['random_state']
+        train_df = pd.read_csv(self.training_set_csv)
+        test_df = pd.read_csv(self.testing_set_csv)
+        # Load NPZ files
+        train_npz = np.load(self.training_set_npz)
+        test_npz = np.load(self.testing_set_npz)
+        # Extract arrays from NPZ files
+        train_input = train_npz['input']
+        train_output = train_npz['output']
+        test_input = test_npz['input']
+        test_output = test_npz['output']
+        train_npz.close()
+        test_npz.close()
+        # Combine datasets
+        combined_df = pd.concat([train_df, test_df], ignore_index=True)
+        del train_df,test_df
+        combined_input = np.vstack([train_input, test_input])
+        combined_output =  np.concatenate([train_output, test_output])
+        # Resplit 
+        train_indices, test_indices = train_test_split(
+            np.arange(len(combined_df)),
+            test_size=self.test_size,
+            random_state=self.random_state
         )
-        # Save the training and testing sets as `.npz` files
-        np.savez(self.training_set_path, input=X_train, output=y_train)
-        np.savez(self.testing_set_path, input=X_test, output=y_test)
-
-        if return_arrays:
-            return X_train,X_test,y_train,y_test
+        # Create new datasets
+        new_train_df = combined_df.iloc[train_indices].reset_index(drop=True)
+        new_test_df = combined_df.iloc[test_indices].reset_index(drop=True)
+        new_train_input = combined_input[train_indices]
+        new_train_output = combined_output[train_indices]
+        new_test_input = combined_input[test_indices]
+        new_test_output = combined_output[test_indices]
+        # Save new CSV files
+        new_train_df.to_csv(self.training_set_csv, index=False)
+        new_test_df.to_csv(self.testing_set_csv, index=False)
+        
+        # Save new NPZ files
+        np.savez(self.training_set_npz, input=new_train_input, output=new_train_output)
+        np.savez(self.testing_set_npz, input=new_test_input, output=new_test_output)
+        del new_train_input,new_train_output,new_test_input,new_test_output
+        print(f"Successfully resplit data with random_state={self.random_state}")
+        print(f"New training set: {len(new_train_df)} samples")
+        print(f"New testing set: {len(new_test_df)} samples")
+        del combined_df, new_train_df,new_test_df
 
     def load_data(self,dataset='training')->tuple[np.ndarray,np.ndarray]:
         """
@@ -108,16 +153,15 @@ class Dataset:
             ValueError: If `dataset` is not 'training' or 'testing'.
 
         """
-        if dataset == 'training':
-            path_to_data = self.training_set_path
-        elif dataset == 'testing':
-            path_to_data = self.testing_set_path
-        else:
-            raise ValueError("dataset should have value either 'training' or 'testing'") 
-        
-        # Load the dataset
-        data = load_npz(path_to_data,['input','output'])
-        X = data['input']
-        Y = data['output']
-        return X,Y
+        if dataset not in ['training', 'testing']:
+            raise ValueError("Dataset must be 'training' or 'testing'.")
+
+        path_to_data = self.training_set_npz if dataset == 'training' else self.testing_set_npz
+
+        if not os.path.exists(path_to_data):
+            raise FileNotFoundError(f"{path_to_data} not found. Ensure dataset is created.")
+
+        data = load_npz(path_to_data, ['input', 'output'])
+        return data['input'], data['output']
+
 
