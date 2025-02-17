@@ -1,24 +1,22 @@
 # deep-learning-for-DFT
 In this project we are using Multilayered Perceptron network to model single point energies of molecules calculated with the help of Density Functional Theory(DFT)
 
-DFT can be used to calculate the value of the potential energy of a molecule. This value is called single
-point energy. It can be understood as a point in the potential energy surface of the molecule.
+DFT can be used to calculate the value of the potential energy of a molecule. This value is called single point energy. It can be understood as a point in the potential energy surface of the molecule.
 ## Input of the Model
 One of the problems in using machine learning techniques in finding properties of molecules is to
-characterize the molecule uniquely in a way that we can feed into a machine learning model. The method
-we have chosen in this project to perform that description is using Coulomb matrices.
+characterize the molecule uniquely in a way that we can feed into a machine learning model. The method we have chosen in this project to perform that description is using Coulomb matrices.
 The entries of coulomb matrix are defined as:
-\[
+$
 C_{ij} =
 \begin{cases}
 0.5Z_i^{2.4}, & i = j \\
 \frac{Z_i Z_j}{||R_i - R_j||}, & i \neq j
 \end{cases}
-\]
+$
 
-where \( Z_i, Z_j \) are atomic numbers, and \( R_i, R_j \) are atomic positions in 3D space. The diagonal elements represent nuclear charge energy, while off-diagonal elements represent interatomic repulsion [@rupp_2012_fast].However since not all the molecules in the input space will be of equal size, we need to pad the coulomb matrix with zeros so that the inputs are all of equal size. Thus an input sample during training
+where $ Z_i, Z_j $ are atomic numbers, and $ R_i, R_j $ are atomic positions in 3D space. The diagonal elements represent nuclear charge energy, while off-diagonal elements represent interatomic repulsion [@rupp_2012_fast].However since not all the molecules in the input space will be of equal size, we need to pad the coulomb matrix with zeros so that the inputs are all of equal size. Thus an input sample during training
 will be:
-\[
+$
 \begin{bmatrix}
 x_{1,1} & x_{1,2} & \cdots & x_{1,n} & \cdots & 0 \\
 x_{2,1} & x_{2,2} & \cdots & x_{2,n} & \cdots & 0 \\
@@ -27,7 +25,7 @@ x_{n,1} & x_{n,2} & \cdots & x_{n,n} & \cdots & 0 \\
 \vdots  & \vdots  & \vdots & \vdots  & \ddots & \vdots \\
 0 & 0 & \cdots & \cdots & \cdots & 0
 \end{bmatrix}
-\]
+$
 
 ## Invariance of Input
 For any input representation scheme to be used on a molecule, the representation must be invariant to
@@ -41,11 +39,11 @@ translation, rotation, permutation of the atoms in the molecule
 The model outputs single point energy of a given input molecule. Single point energy means the potential
 energy of the molecule at a given state. The model was trained on energy calculated using Gaussian 09
 software. The output space during training will be of the form:
-\[
+$
 E = \begin{bmatrix} E_1, E_2, \dots, E_n \end{bmatrix}
-\]
+$
 
-where each \( E_i \) corresponds to the energy of a specific molecule in the dataset. The Gaussian program outputs the energies in the
+where each $ E_i $ corresponds to the energy of a specific molecule in the dataset. The Gaussian program outputs the energies in the
 unit of Hatrees which is related to eV by 1 Hatree = 27.211 eV
 
 
