@@ -106,12 +106,12 @@ class Dataset:
         test_output = test_npz['output']
         train_npz.close()
         test_npz.close()
-        # Combine datasets
+
         combined_df = pd.concat([train_df, test_df], ignore_index=True)
         del train_df,test_df
         combined_input = np.vstack([train_input, test_input])
         combined_output =  np.concatenate([train_output, test_output])
-        # Resplit 
+
         train_indices, test_indices = train_test_split(
             np.arange(len(combined_df)),
             test_size=self.test_size,

@@ -5,7 +5,7 @@ DFT can be used to calculate the value of the potential energy of a molecule. Th
 
 ## Input of the Model
 One of the problems in using machine learning techniques in finding properties of molecules is to
-characterize the molecule uniquely in a way that we can feed into a machine learning model. The method we have chosen in this project to perform that description is using Coulomb matrices.
+characterize the molecule uniquely in a way that we can feed into a machine learning model. The method we have chosen in this project to perform that description is using Coulomb matrices which was presented in this paper https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.108.058301.
 The entries of coulomb matrix are defined as:
 
 $$
@@ -16,7 +16,7 @@ C_{ij} =
 \end{cases}
 $$
 
-where $$Z_i, Z_j$$ are atomic numbers, and $$R_i, R_j$$ are atomic positions in 3D space. The diagonal elements represent nuclear charge energy, while off-diagonal elements represent interatomic repulsion [@rupp_2012_fast].However since not all the molecules in the input space will be of equal size, we need to pad the coulomb matrix with zeros so that the inputs are all of equal size. Thus an input sample during training
+where $$Z_i, Z_j$$ are atomic numbers, and $$R_i, R_j$$ are atomic positions in 3D space. The diagonal elements represent nuclear charge energy, while off-diagonal elements represent interatomic repulsion.However since not all the molecules in the input space will be of equal size, we need to pad the coulomb matrix with zeros so that the inputs are all of equal size. Thus an input sample during training
 will be:
 
 $$

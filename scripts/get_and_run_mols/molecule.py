@@ -48,14 +48,13 @@ class Molecule:
         self.mass = 0
         self.gjf_file = gjf_file
 
-        # Load molecule geometry if gjf file is provided
+
         
         self.read_from_gjf(elements,gjf_file)
         self.center = self.calculate_center_of_mass()
         self.update_distances_from_center()
         self.atom_count=len(self.atoms)
 
-        # Generate Coulomb matrix and sort if necessary
         if distance_sorting:
             self.sort_by_distance()
         self.coulomb_matrix = self.calculate_coulomb_matrix()
