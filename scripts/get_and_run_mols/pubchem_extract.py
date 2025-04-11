@@ -15,23 +15,19 @@ def write_to_gjf(compound:pcp.Compound,threads:int=7,method:str="hf",basis:str="
         method (str, optional): Method employed in Gaussian Defaults to "hf".
         basis (str, optional): Basis set to be used in Gaussian. Defaults to "sto-3g".
     """
-    #Define paths for Input and checkout files
 
     gauss_dir=os.path.join(PROJECT_ROOT,"gaussian")
     input_dir=os.path.join(gauss_dir,"input")
     chk_dir=os.path.join(gauss_dir,"chk")
 
-    #Create directories if they do not exist
     os.makedirs(gauss_dir, exist_ok=True)
     os.makedirs(input_dir, exist_ok=True)
     os.makedirs(chk_dir, exist_ok=True)
 
-    #Define input files and checkout file
     cid=str(int(compound.cid))
     gjf_file = os.path.join(input_dir,cid+".gjf")
     chk_file = os.path.join(chk_dir,cid+".chk")
 
-    #Define header lines
     threadline=f"%nprocshared={threads}\n"
     chk_line=f"%chk={chk_file}\n"
     action_line=f"# {method}/{basis} geom=connectivity\n"
@@ -39,30 +35,25 @@ def write_to_gjf(compound:pcp.Compound,threads:int=7,method:str="hf",basis:str="
     multiplicity_line="0 1\n"
 
     with open(gjf_file,"w") as file:
-        #Write the header lines
         file.write(threadline)
         file.write(chk_line)
         file.write(action_line)
         file.write(title_line)
         file.write(multiplicity_line)
 
-        #Write atom co-ordinates
         for atom in compound.atoms:
             position_line=" {}\t\t{:.6f}\t\t{:.6f}\t\t{:.6f}\n".format(atom.element,atom.x,atom.y,atom.z)
             file.write(position_line)
-        #Write bond information
         bond_last=0 
         bond=compound.bonds[0]
         first_connection=""
         other_connections=""
         for bond in compound.bonds:
             if bond.aid1 != bond_last:
-                # Write previous connections and start a new line for the current atom
                 file.write(other_connections) 
                 first_connection="\n {} {} {:.1f} ".format(bond.aid1,bond.aid2, bond.order)
                 other_connections=""
 
-                # Fill in any atoms without connections
                 if bond.aid1 - bond_last>1:
                     for i in range(bond_last+1,bond.aid1):file.write(f"\n {i}")
                 file.write(first_connection)
@@ -70,7 +61,6 @@ def write_to_gjf(compound:pcp.Compound,threads:int=7,method:str="hf",basis:str="
             else:
                 aid2=bond.aid2
                 other_connections += "{} {:.1f} ".format(aid2, bond.order)
-        #Fill in any remaining atoms without connections
         for i in range(bond_last+1,len(compound.atoms)+1):
             file.write(f"\n {i}")
 
@@ -109,16 +99,13 @@ def run_thread(molecules:pd.DataFrame,data_path:os.PathLike,n_threads:int=4):
     if n_threads>8:raise ValueError("Too many threads")
     smiles=molecules['Smiles']
 
-    #Split Smiles column into n_threads parts
     split_data = np.array_split(smiles,n_threads) 
     dict_map = [{} for i in range(n_threads)]
 
-    #Create Threads, Start and Join them
     threads= [threading.Thread(target=get_compound,args=(split,idx,dict_map[idx],)) for idx,split in enumerate(split_data)] 
     [t.start() for t in threads]
     [t.join() for t in threads]
     
-    #Combine all dictionaries into one dictionary 
     while len(dict_map) != 1:
         dict_map[0].update(dict_map[-1])
         del dict_map[-1]

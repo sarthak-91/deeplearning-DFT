@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd 
 import json
-from scripts.network_class import NeuralNetworkManager
+from scripts.ml_model.network_class import NeuralNetworkManager
 import numpy as np
 from scripts.data_processing.data_class import Dataset
 
@@ -23,17 +23,19 @@ def training_performance(history,save_to:str):
             with 'accuracy' and 'val_accuracy' keys.
         save_to (str): File path to save the accuracy plot.
     """
-    acc = np.log(history['loss'])
-    val_acc = np.log(history['val_mse'])
+    acc = np.log10(history['loss'])
+    val_acc = np.log10(history['val_mse'])
     epochs = range(1, len(acc) + 1)
-
-    plt.plot(epochs, acc, '-', label='Training Accuracy')
-    plt.plot(epochs, val_acc, ':', label='Validation Accuracy')
-    plt.title('Training and Validation Accuracy')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend(loc='upper right')
-    plt.savefig(save_to)
+    fig,ax = plt.subplots()
+    ax.plot(epochs, acc, '-', label='Training Loss')
+    ax.plot(epochs, val_acc, ':', label='Validation Loss')
+    ax.set_title('Training and Validation Loss')
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Log(Loss)')
+    y_max = max(acc.max(), val_acc.max())
+    ax.set_yticks(np.arange(np.floor(0), np.ceil(y_max) + 1, 1))
+    ax.legend(loc='upper right')
+    fig.savefig(save_to)
     plt.close()
 
 def error_hist(y_test,predictions,save_to:str):
@@ -41,7 +43,7 @@ def error_hist(y_test,predictions,save_to:str):
     def squish(x, c=1):
         return  np.log(1+c*x)/np.log(1+c)
 
-    bins = np.arange(0, max(error)+10, 10)  # Bin width of 10
+    bins = np.arange(0, max(error)+10, 10)  
     print(max(error))
     print(len(error))
     hist, bin_edges = np.histogram(error, bins=bins)
@@ -66,12 +68,10 @@ def error_vs_atoms(x_test, y_test, predictions,save_to:str):
         N_atoms[i] = N 
     plt.scatter(N_atoms,error,marker="*")
     plt.title('Error vs Atoms')
-    plt.xlabel('Errors')
-    plt.ylabel('Atoms')
+    plt.xlabel('Atoms')
+    plt.ylabel('Errors')
     plt.savefig(save_to)
     plt.close()
-    plt.hist(N_atoms,bins=10)
-    plt.savefig("hist.png")
 
 
 if __name__ == "__main__":
