@@ -1,0 +1,5 @@
+theme: minima
+title: Machine Learning for DFT
+description: Using ML to energies of molecules.
+kramdown:
+  math_engine: mathjax
