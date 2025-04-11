@@ -1,4 +1,4 @@
-## Introduction
+
 In this project we are using Multilayered Perceptron network to model single point energies of molecules calculated with the help of Density Functional Theory(DFT)
 
 DFT can be used to calculate the value of the potential energy of a molecule. This value is called single point energy. It can be understood as a point in the potential energy surface of the molecule. Doing DFT calculations is computationally expensive and with the the advent of Machine Learning methods, we could train ML models to learn/simulate DFT models as closely as possible. For this we take the simplest quantity to model using ML, the ground state energy of a molecule. 
