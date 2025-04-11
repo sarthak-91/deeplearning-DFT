@@ -89,7 +89,6 @@ class Dataset:
     
     
     def resplit_dataset(self,**kwargs):
-        # Load CSV files
         if kwargs != {}:
             if 'test_size' in kwargs.keys():
                 self.test_size = kwargs['test_size']
@@ -97,10 +96,10 @@ class Dataset:
                 self.random_state = kwargs['random_state']
         train_df = pd.read_csv(self.training_set_csv)
         test_df = pd.read_csv(self.testing_set_csv)
-        # Load NPZ files
+
         train_npz = np.load(self.training_set_npz)
         test_npz = np.load(self.testing_set_npz)
-        # Extract arrays from NPZ files
+
         train_input = train_npz['input']
         train_output = train_npz['output']
         test_input = test_npz['input']
@@ -118,18 +117,16 @@ class Dataset:
             test_size=self.test_size,
             random_state=self.random_state
         )
-        # Create new datasets
         new_train_df = combined_df.iloc[train_indices].reset_index(drop=True)
         new_test_df = combined_df.iloc[test_indices].reset_index(drop=True)
         new_train_input = combined_input[train_indices]
         new_train_output = combined_output[train_indices]
         new_test_input = combined_input[test_indices]
         new_test_output = combined_output[test_indices]
-        # Save new CSV files
+
         new_train_df.to_csv(self.training_set_csv, index=False)
         new_test_df.to_csv(self.testing_set_csv, index=False)
         
-        # Save new NPZ files
         np.savez(self.training_set_npz, input=new_train_input, output=new_train_output)
         np.savez(self.testing_set_npz, input=new_test_input, output=new_test_output)
         del new_train_input,new_train_output,new_test_input,new_test_output

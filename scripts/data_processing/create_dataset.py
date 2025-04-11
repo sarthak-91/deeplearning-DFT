@@ -44,6 +44,14 @@ def fill_up(big_array:np.ndarray,coulomb_vector:np.ndarray, index:int=0):
 
 
 def create_npz(molecules:pd.DataFrame, npz_path:str, dataset_path:str, max_N):
+    """Save calculated coulomb matrices in npz formart
+
+    Args:
+        molecules (pd.DataFrame): csv file containing molecular info
+        npz_path (str): npz file to save to
+        dataset_path (str): save final dataset
+        max_N (_type_): Maximum size of matrix
+    """
     N = int(max_N*(max_N+1)/2)
     big_array = np.zeros((molecules.shape[0],N))
     energies=molecules['Energy'].to_numpy()
