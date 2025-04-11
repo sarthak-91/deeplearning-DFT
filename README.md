@@ -1,5 +1,5 @@
 # Modeling molecular energies with Deep Learning
-This project uses machine learning model to predict molecular single point energies, typically calculated by computationally intensive Density Functional Theory (DFT). The goal is a faster energy estimation method. The molecular energies are coputed using Gaussian 16 software and the molecules are prepared as inputs to ML model by calculating their coulomb matrices. 
+This project uses machine learning model to predict molecular single point energies, typically calculated by computationally intensive Density Functional Theory (DFT). The project aims to put forth ML methods as a fater method to calculate energies of molecules specially when a quick and dirty calculation is only desired. The molecular energies are calculated using Gaussian 16 software and the molecules are prepared as inputs to ML model by calculating their coulomb matrices. 
 
 ### Workflow Overview: 
 
