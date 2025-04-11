@@ -113,7 +113,7 @@ The class offers two primary network architecture options through its create_mlp
 
 ## Training and Inference
 After preparing everything, the model can be trained to learn molecular energies. 
-```
+```python
 from scripts.ml_model.network_class import NeuralNetworkManager
 from scripts.data_processing.data_class import Dataset
 from scripts.ml_model.network_class import NeuralNetworkManager
@@ -123,7 +123,7 @@ import json
 import os
 from scripts.visualization.visuals import training_performance, error_vs_atoms
 ```
-```
+```python
 dataset = Dataset(complete_dataset='data/filtered_molecules.csv',npz_folder='datasets',csv_folder='datasets')
 new_network = NeuralNetworkManager(model_name='testing',folder_name="cnn_model") 
 model_path = os.path.join(new_network.folder,new_network.model_name)
@@ -155,7 +155,7 @@ The loss during the training loop is shown:
 ![loss](imgs/training_loss.png)
 
 The we can test our model on the test set. 
-```
+```python
     x_test,y_test = dataset.load_data(dataset="testing")
     testing_dataframe = dataset.load_csv(dataset='testing')
     if cnn_model:
@@ -194,6 +194,7 @@ Errors greather than 50:
 ```
 There were 34 molecules that showed very high deviations from their true values, most of them were molecules containing Halogens. It could be because our coulomb matrix representation foes not do well for Halogens. Apart from that on average the deviation was measured to be 0.68% which is pretty reasonable. We can visualise the erros with respect to number of atoms:
 ![error](imgs/error.png)
+
 It can be seen while most molecules are predicted well some outliers show very high errors. 
 
 <script type="text/javascript" async
